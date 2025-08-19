@@ -1,29 +1,55 @@
-# SMAI PROJECT PHASE 2 Report
-## Preprocessing
+# Campus Image Location Prediction
+
+This project aims to predict the location of images taken on a campus using machine learning techniques. It leverages datasets of campus images, likely with associated metadata, to train models capable of determining image locations.
+
+## Features
+
+- Predicts the location of campus images.
+- Utilizes machine learning models (likely in Jupyter Notebooks).
+- Designed for educational or research purposes.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+- Jupyter Notebook
+- Recommended: virtualenv or conda
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ashurudra09/campus-image-location-prediction.git
+   cd campus-image-location-prediction
+   ```
+## About The Code:
+
+### Preprocessing
 For latlong task, IQR method is applied for preprocessing which removes the outliers by removing values below 1st quartile and above 3rd quartile. The latitude and longitude for training and validation are scaled using RobustScaling before being passed as inputs. 
 
 For direction task, all angles outside of [0,360) were removed.
 
 For regionID, labels are converted from 0-14 during training.
 
-## Transforms used
+### Transforms used
 Conversion to 224x224, followed by random rotation and normalization by ImageNet mean and std.
 
-## Latlong Task
+### Latlong Task
 - Backbone used: ConvNext-Tiny with pretrained weights
 - Modification: Classifier is modified by changing it to a layer norm, flatten, dropout of 0.5 and output to 2 nodes (latitude+longitude).
 - MSE Loss with Adam optimizer and ReduceLROnPlateau schedulers are used.
 - Hyperparameters used: Epochs = 50, LR = 1e-4 , Dropout =0.5 , Stochastic_prob_depth = 0.5 (To avoid overfitting)
 - Early stopping when LR drops below 1e-6
 
-## RegionID Task
+### RegionID Task
 - Backbone used: ConvNext-Tiny with pretrained weights
 - Modification: Classifier is modified by changing it to a layer norm, flatten, dropout of 0.5 and output to 15 node (one for each region ID).
 - CrossEntropy Loss with Adam optimizer and ReduceLROnPlateau schedulers are used.
 - Hyperparameters used: Epochs = 50, LR = 1e-4 , Dropout =0.5 , Stochastic_prob_depth = 0.5 (To avoid overfitting)
 - Early stopping when LR drops below 1e-6
 
-## Direction Task
+### Direction Task
 - Backbone used: ConvNext-Tiny with pretrained weights
 - Modification: Classifier is modified by changing it to a layer norm, flatten, dropout of 0.5 and output to 1 node.
 - MAAE Loss with Adam optimizer and ReduceLROnPlateau schedulers are used.
@@ -31,7 +57,7 @@ Conversion to 224x224, followed by random rotation and normalization by ImageNet
 - Early stopping when LR drops below 1e-6
 
 
-## Link to Model Weights
+### Link to Model Weights
 [https://drive.google.com/drive/folders/1j_WcoJo53CN_7BNkfpWw2KUbiK9SO1pm?usp=sharing ](https://drive.google.com/drive/folders/171x8YmkyWHHWd6qQYW2Hr8iiDowahNCd?usp=sharing)
 
 
