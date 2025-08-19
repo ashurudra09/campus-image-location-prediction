@@ -1,6 +1,6 @@
 # Campus Image Location Prediction
 
-This project aims to predict the location of images taken on a campus using machine learning techniques. It leverages datasets of campus images, likely with associated metadata, to train models capable of determining image locations.
+This project aims to predict the location of images taken on a campus using machine learning techniques. It leverages datasets of campus images, with associated metadata, to train models capable of determining image locations.
 
 ## Features
 
