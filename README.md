@@ -70,13 +70,6 @@ Conversion to 224x224, followed by random rotation and normalization by ImageNet
 - Hyperparameters used: Epochs = 50, LR = 1e-4 , Dropout =0.5 , Stochastic_prob_depth = 0.5 (To avoid overfitting)
 - Early stopping when LR drops below 1e-6
 
-### Direction Task
-- Backbone used: ConvNext-Tiny with pretrained weights
-- Modification: Classifier is modified by changing it to a layer norm, flatten, dropout of 0.5 and output to 1 node.
-- MAAE Loss with Adam optimizer and ReduceLROnPlateau schedulers are used.
-- Hyperparameters used: Epochs = 50, LR = 1e-4 , Dropout =0.5 , Stochastic_prob_depth = 0.5 (To avoid overfitting)
-- Early stopping when LR drops below 1e-6
-
 ---
 
 ### Link to Model Weights
