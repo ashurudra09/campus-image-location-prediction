@@ -109,15 +109,13 @@ def main():
     ax.set_xticks(range(15), range(1, 16)), ax.set_yticks(range(15), range(1, 16))
     fig.savefig(os.path.join(a.out, "confusion_matrix.png"), dpi=120, bbox_inches="tight"), plt.close(fig)
 
-    if train is None:
-        res["latlong"] = "skipped: labels_train.csv not found"
-        with open(os.path.join(a.out, "metrics.json"), "w") as f:
-            json.dump(res, f, indent=2)
-        print(json.dumps(res, indent=2))
-        return
-
     # --- lat/long (scaler and baselines come from the IQR-filtered train set, as in training) ----
-    tr = iqr_filter(iqr_filter(train, "latitude"), "longitude")
+    # If labels_train.csv is unavailable, fall back to the validation labels. The numbers are then APPROXIMATE:
+    # the scaler differs slightly from the training one and the baselines are fit on the data they are scored on
+    # (optimistic for the baselines, i.e. conservative for claims that the model beats them).
+    ref = train if train is not None else val
+    res["latlong_reference"] = "train" if train is not None else "val (approximate: labels_train.csv not found)"
+    tr = iqr_filter(iqr_filter(ref, "latitude"), "longitude")
     scaler = RobustScaler().fit(tr[["latitude", "longitude"]])
     true = val[["latitude", "longitude"]].to_numpy()
     out = predict(latlong_model(), os.path.join(a.models, "best_latlong_model.pth"), val_files, val_root)
@@ -134,6 +132,12 @@ def main():
     b, m = res["latlong"]["baseline_train_mean"]["median_err"], res["latlong"]["model"]["median_err"]
     res["latlong"]["median_err_reduction_vs_mean_baseline_pct"] = float(100 * (b - m) / b)
     res["latlong"]["n_val_iqr_filtered_out"] = int(len(val) - len(keep))
+    if train is None:  # how much does the approximate scaler matter? refit it on two random halves of val
+        idx = np.random.default_rng(0).permutation(len(val))
+        halves = [val.iloc[idx[:len(idx) // 2]], val.iloc[idx[len(idx) // 2:]]]
+        res["latlong"]["model_median_err_with_scaler_fit_on_val_halves"] = [
+            coord_errors(RobustScaler().fit(iqr_filter(iqr_filter(h, "latitude"), "longitude")[["latitude", "longitude"]])
+                         .inverse_transform(out), true)["median_err"] for h in halves]
 
     with open(os.path.join(a.out, "metrics.json"), "w") as f:
         json.dump(res, f, indent=2)

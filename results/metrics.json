@@ -6,5 +6,41 @@
     "macro_f1": 0.9473565169043799,
     "majority_baseline_top1": 0.0975609756097561
   },
-  "latlong": "skipped: labels_train.csv not found"
+  "latlong_reference": "val (approximate: labels_train.csv not found)",
+  "latlong": {
+    "model": {
+      "mean_err": 3053.8464684234145,
+      "median_err": 689.9248787939932,
+      "rmse": 21681.646977895463,
+      "mse_lat": 276492014.65525424,
+      "mse_lon": 193601801.01882926
+    },
+    "model_on_iqr_filtered_val": {
+      "mean_err": 732.7769213475963,
+      "median_err": 687.8912347993189,
+      "rmse": 798.957896433969,
+      "mse_lat": 329025.18300565437,
+      "mse_lon": 309308.5372685385
+    },
+    "baseline_train_mean": {
+      "mean_err": 3681.189279714338,
+      "median_err": 1358.0530678341977,
+      "rmse": 21668.30915147439,
+      "mse_lat": 273249049.92244804,
+      "mse_lon": 196266571.5614209
+    },
+    "baseline_region_centroid_from_predicted_region": {
+      "mean_err": 2706.8330968529576,
+      "median_err": 303.46542739659816,
+      "rmse": 21654.187939328833,
+      "mse_lat": 274232396.39346075,
+      "mse_lon": 194671458.91831344
+    },
+    "median_err_reduction_vs_mean_baseline_pct": 49.19750228212548,
+    "n_val_iqr_filtered_out": 7,
+    "model_median_err_with_scaler_fit_on_val_halves": [
+      586.1212863849219,
+      849.9274489372791
+    ]
+  }
 }

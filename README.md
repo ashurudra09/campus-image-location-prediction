@@ -45,7 +45,7 @@ This started as the Phase-2 project of the SMAI course at IIIT Hyderabad (see `P
 python eval.py
 ```
 
-`eval.py` loads the best checkpoints and writes `results/metrics.json` and `results/confusion_matrix.png`. It reports:
+`eval.py` loads the best checkpoints (if `labels_train.csv` is missing it falls back to the validation labels for the lat/long scaler and baselines, and says so in `metrics.json`) and writes `results/metrics.json` and `results/confusion_matrix.png`. It reports:
 
 *   Region: top-1 accuracy, macro-F1, and the majority-class baseline accuracy.
 *   Lat/long: mean/median/RMSE Euclidean error and per-axis MSE (the course metric), against two baselines (train-mean coordinate; centroid of the predicted region), plus the median-error reduction versus the mean baseline.
@@ -62,9 +62,13 @@ About 2% of the validation coordinates (7 of 369) are IQR outliers. They dominat
 | ---- | ------ | ------ | -------- |
 | Region (15 classes) | Top-1 accuracy | **95.1%** | at most 9.8% (always guessing the most common region; upper bound computed on the validation set) |
 | Region (15 classes) | Macro-F1 | **0.947** | n/a |
-| Lat/long | Median error | not yet evaluated: needs `labels_train.csv` (the Drive dataset link currently returns 404) | train-mean and region-centroid baselines are implemented in `eval.py` |
+| Lat/long | Median error (dataset units) | **about 690** (590–850 depending on the scaler estimate, see below) | mean coordinate: 1358; predicted-region centroid: **303** (317 leave-one-out) |
 
 Confusion matrix: `results/confusion_matrix.png` (the weakest regions are 9 and 11, mostly confused with neighbouring regions). Raw numbers: `results/metrics.json`.
+
+**Lat/long is approximate.** `labels_train.csv` is not available (the dataset Drive link is dead), so `eval.py` fits the `RobustScaler` and the baselines on the validation labels instead (`latlong_reference` in `metrics.json` records this). The scaler is a little different from the training one, so the model's median error moves between about 590 and 850 when it is refit on two random halves of the validation labels; the baselines are fit on the data they are scored on, which flatters them slightly (the leave-one-out centroid baseline is 317 vs 303 in-sample). Treat these as indicative, not final.
+
+What the numbers say, even with that uncertainty: the regressor cuts the median error of the mean-coordinate baseline by roughly 35-55% (37-57% across the scaler estimates), but **"classify the region, then return that region's centroid" has about half the error of the regressor**. Directly regressing scaled coordinates with MSE is therefore a weak objective here (it is also pulled around by the ~2% outlier coordinates). A natural next step is to predict a per-region offset from the centroid, or to train a robust-loss / multi-task model.
 
 Caveat: the checkpoints were selected by validation loss on this same validation set, so these numbers are slightly optimistic; a separate held-out test split was not used.
 
