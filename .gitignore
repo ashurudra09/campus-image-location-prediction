@@ -1,2 +1,4 @@
 best-models
 test-data
+models/
+__pycache__/

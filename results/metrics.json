@@ -1,0 +1,10 @@
+{
+  "n_val": 369,
+  "majority_baseline_source": "val (upper bound; labels_train.csv not found)",
+  "region": {
+    "top1": 0.9512195121951219,
+    "macro_f1": 0.9473565169043799,
+    "majority_baseline_top1": 0.0975609756097561
+  },
+  "latlong": "skipped: labels_train.csv not found"
+}

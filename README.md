@@ -1,15 +1,15 @@
 # Campus Image Location Prediction
 
-This project uses a deep learning model to predict the geographical location (latitude and longitude) and region ID of images taken on a campus. It leverages a modified `ConvNext-Tiny` architecture to perform these distinct prediction tasks.
+Two fine-tuned `ConvNeXt-Tiny` models that predict, from a single campus photo, (1) which of 15 campus regions it was taken in and (2) its latitude/longitude. They are two separate models (one per task), not a single multi-task network.
+
+This started as the Phase-2 project of the SMAI course at IIIT Hyderabad (see `Project_Phase_2.pdf`) and was later cleaned up. The coordinates in the dataset are the course's *scaled* units, not degrees, so location errors are reported in those units and relative to baselines.
 
 ## Features
 
-*   **Latitude & Longitude Prediction**: Regresses the precise GPS coordinates of an image.
-*   **Region ID Classification**: Classifies the image into one of 15 predefined campus regions.
+*   **Latitude & Longitude regression**: MSE loss on robust-scaled coordinates.
+*   **Region ID classification**: 15-way, cross-entropy loss.
 
 ## Getting Started
-
-Follow these steps to set up the project environment and run the models.
 
 ### Prerequisites
 
@@ -35,48 +35,66 @@ Follow these steps to set up the project environment and run the models.
     pip install -r requirements.txt
     ```
 
-4.  **Download the Data and Models:**
-    *   Download the full dataset from [this link](https://drive.google.com/drive/folders/1vtLNqk0N2GriYKcv6FUwiPQHSCBN69E-?usp=sharing). Unzip and place the contents into the `data/raw/` directory.
-    *   Download the pre-trained model weights from [this link](https://drive.google.com/drive/folders/171x8YmkyWHHWd6qQYW2Hr8iiDowahNCd?usp=sharing). Place the `.pth` files into the `models/` directory.
+4.  **Download the data and weights:**
+    *   Download the [dataset](https://drive.google.com/drive/folders/1vtLNqk0N2GriYKcv6FUwiPQHSCBN69E-?usp=sharing) and place `labels_train.csv` and `images_train/` in the repo root (`labels_val.csv` and `images_val/` are already here), the same layout the notebooks read.
+    *   Download the [pre-trained weights](https://drive.google.com/drive/folders/1j_WcoJo53CN_7BNkfpWw2KUbiK9SO1pm?usp=sharing) and place `best_region_model.pth` and `best_latlong_model.pth` in `models/`.
 
+## Evaluation
+
+```bash
+python eval.py
+```
+
+`eval.py` loads the best checkpoints and writes `results/metrics.json` and `results/confusion_matrix.png`. It reports:
+
+*   Region: top-1 accuracy, macro-F1, and the majority-class baseline accuracy.
+*   Lat/long: mean/median/RMSE Euclidean error and per-axis MSE (the course metric), against two baselines (train-mean coordinate; centroid of the predicted region), plus the median-error reduction versus the mean baseline.
+
+Evaluation uses a plain resize + normalize transform and the **full** validation set. The notebooks' original validation numbers should not be quoted: they were computed with random flip/rotation applied to validation images and, for lat/long, after dropping validation outliers. `eval.py` also reports the lat/long error on that filtered subset so the difference is visible.
+
+About 2% of the validation coordinates (7 of 369) are IQR outliers. They dominate the mean error, RMSE and MSE, so **median error** is the more meaningful headline for lat/long; the other numbers are reported for completeness.
+
+*Note on the shared lat/long checkpoint:* its keys are prefixed with `model.` (it was saved from a wrapper module, unlike the notebook, which saves the plain network), so it was probably produced by slightly different code than `latlong/Latlongp2.ipynb`. `eval.py` strips the prefix and loads it with strict key matching.
+
+### Results (validation set, 369 images)
+
+| Task | Metric | Result | Baseline |
+| ---- | ------ | ------ | -------- |
+| Region (15 classes) | Top-1 accuracy | **95.1%** | at most 9.8% (always guessing the most common region; upper bound computed on the validation set) |
+| Region (15 classes) | Macro-F1 | **0.947** | n/a |
+| Lat/long | Median error | not yet evaluated: needs `labels_train.csv` (the Drive dataset link currently returns 404) | train-mean and region-centroid baselines are implemented in `eval.py` |
+
+Confusion matrix: `results/confusion_matrix.png` (the weakest regions are 9 and 11, mostly confused with neighbouring regions). Raw numbers: `results/metrics.json`.
+
+Caveat: the checkpoints were selected by validation loss on this same validation set, so these numbers are slightly optimistic; a separate held-out test split was not used.
 
 ## Methodology
 
-The core of this project is a `ConvNext-Tiny` model, pre-trained on ImageNet, which has been fine-tuned for 2 different tasks.
-
-## About The Code:
+Both models are ImageNet-pretrained `ConvNeXt-Tiny` networks, fine-tuned end to end (Adam, batch size 32, `ReduceLROnPlateau` with patience 1 and factor 0.5, dropout 0.5, stochastic depth 0.5, 40 epochs maximum). The checkpoint with the lowest validation loss is saved. The code lives in `latlong/Latlongp2.ipynb` and `regionID/RegionP2.ipynb`.
 
 ### Preprocessing
-For latlong task, IQR method is applied for preprocessing which removes the outliers by removing values below 1st quartile and above 3rd quartile. The latitude and longitude for training and validation are scaled using RobustScaling before being passed as inputs. 
+*   **Lat/long:** IQR outlier filtering on the training and validation labels in the notebook (keep values within `[Q1 - 1.5·IQR, Q3 + 1.5·IQR]`, applied to latitude then longitude). Coordinates are then scaled with `RobustScaler` fitted on the filtered training set.
+*   **Region ID:** labels are shifted from 1-15 to 0-14 for training.
 
-For direction task, all angles outside of [0,360) were removed.
+### Transforms (training)
+Resize to 224x224, random horizontal flip, random rotation (±10°), ImageNet mean/std normalization. (The same transform is currently also used on validation inside the notebooks, which `eval.py` corrects.)
 
-For regionID, labels are converted from 0-14 during training.
+### Latlong model (`latlong/Latlongp2.ipynb`)
+- The classifier is replaced by `Flatten → LayerNorm → Dropout(0.5) → Linear(768, 2)`.
+- MSE loss, learning rate 1e-4.
+- Training stops early when the learning rate falls below 5e-6.
 
-### Transforms used
-Conversion to 224x224, followed by random rotation and normalization by ImageNet mean and std.
-
-### Latlong Task
-- Backbone used: ConvNext-Tiny with pretrained weights
-- Modification: Classifier is modified by changing it to a layer norm, flatten, dropout of 0.5 and output to 2 nodes (latitude+longitude).
-- MSE Loss with Adam optimizer and ReduceLROnPlateau schedulers are used.
-- Hyperparameters used: Epochs = 50, LR = 1e-4 , Dropout =0.5 , Stochastic_prob_depth = 0.5 (To avoid overfitting)
-- Early stopping when LR drops below 1e-6
-
-### RegionID Task
-- Backbone used: ConvNext-Tiny with pretrained weights
-- Modification: Classifier is modified by changing it to a layer norm, flatten, dropout of 0.5 and output to 15 node (one for each region ID).
-- CrossEntropy Loss with Adam optimizer and ReduceLROnPlateau schedulers are used.
-- Hyperparameters used: Epochs = 50, LR = 1e-4 , Dropout =0.5 , Stochastic_prob_depth = 0.5 (To avoid overfitting)
-- Early stopping when LR drops below 1e-6
+### RegionID model (`regionID/RegionP2.ipynb`)
+- `classifier[2]` is replaced by `Flatten → LayerNorm → Dropout(0.5) → Linear(768, 15)`. ConvNeXt's own classifier already starts with a LayerNorm, so this model has two LayerNorms in a row (kept as trained, so the saved weights load; `eval.py` rebuilds this head exactly).
+- Cross-entropy loss, learning rate 2e-4.
+- Training stops early when the learning rate falls below 1e-6.
 
 ---
 
 ### Link to Model Weights
-[https://drive.google.com/drive/folders/1j_WcoJo53CN_7BNkfpWw2KUbiK9SO1pm?usp=sharing ](https://drive.google.com/drive/folders/171x8YmkyWHHWd6qQYW2Hr8iiDowahNCd?usp=sharing)
-
+[Google Drive](https://drive.google.com/drive/folders/1j_WcoJo53CN_7BNkfpWw2KUbiK9SO1pm?usp=sharing) (the folder also contains `best_angle_model.pth` from the unused direction task)
 
 ### Link to Dataset
-[https://drive.google.com/drive/folders/1vtLNqk0N2GriYKcv6FUwiPQHSCBN69E-?usp=sharing](https://drive.google.com/drive/folders/1vtLNqk0N2GriYKcv6FUwiPQHSCBN69E-?usp=sharing)
+[Google Drive](https://drive.google.com/drive/folders/1vtLNqk0N2GriYKcv6FUwiPQHSCBN69E-?usp=sharing)
 
 ---
